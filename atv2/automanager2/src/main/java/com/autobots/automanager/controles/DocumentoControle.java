@@ -1,6 +1,7 @@
 package com.autobots.automanager.controles;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import javax.persistence.EntityNotFoundException;
 
@@ -19,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.autobots.automanager.entidades.Cliente;
 import com.autobots.automanager.entidades.Documento;
 import com.autobots.automanager.modelos.DocumentoAtualizador;
-import com.autobots.automanager.modelos.AdicionadorLinkCliente;
+import com.autobots.automanager.modelos.AdicionadorLinkDocumento;
 import com.autobots.automanager.repositorios.ClienteRepositorio;
 import com.autobots.automanager.repositorios.DocumentoRepositorio;
 
@@ -33,7 +34,7 @@ public class DocumentoControle {
 	private DocumentoRepositorio repositorioDocumento;
 	
 	@Autowired
-	private AdicionadorLinkCliente adicionadorLink;
+	private AdicionadorLinkDocumento adicionadorLink;
 	
 	@PostMapping("/adicionar/{clienteId}")
 	public ResponseEntity<?> adicionarDocumento(@PathVariable Long clienteId, @RequestBody Documento documento) {
@@ -48,17 +49,34 @@ public class DocumentoControle {
 	}
 	
 	
-	@GetMapping("/documentos/{clienteId}")
-	public ResponseEntity<List<Documento>> obterDocumentosCliente(@PathVariable Long clienteId) {
-		try {
-	        Cliente cliente = repositorioCliente.getById(clienteId);
-	        ResponseEntity<List<Documento>> resposta = new ResponseEntity<>(cliente.getDocumentos(), HttpStatus.OK);
-	        adicionadorLink.adicionarLink(cliente);
-	        return resposta;
-	    } catch (EntityNotFoundException e) {
+	@GetMapping("/documento/{documentoId}")
+	public ResponseEntity<Documento> obterDocumento(@PathVariable Long documentoId) {
+	    try {
+	        Documento documento = repositorioDocumento.findById(documentoId).orElseThrow(() -> new EntityNotFoundException("Documento não encontrado"));  
+	        adicionadorLink.adicionarLink(documento);
+	        
+	        return new ResponseEntity<>(documento, HttpStatus.OK);
+	    } catch (EntityNotFoundException | NoSuchElementException e) {
 	        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+	    } catch (Exception e) {
+	        return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
 	    }
 	}
+
+	
+	@GetMapping("documentos")
+	public ResponseEntity<List<Documento>> obterDocumentos() {
+		List<Documento> documentos = repositorioDocumento.findAll();
+		if (documentos.isEmpty()) {
+			ResponseEntity<List<Documento>> resposta = new ResponseEntity<>(HttpStatus.NOT_FOUND);
+			return resposta;
+		} else {
+			adicionadorLink.adicionarLink(documentos);
+			ResponseEntity<List<Documento>> resposta = new ResponseEntity<>(documentos, HttpStatus.FOUND);
+			return resposta;
+		}
+	}
+	
 	
 
 	
