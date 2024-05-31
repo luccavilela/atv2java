@@ -1,6 +1,9 @@
 package com.autobots.automanager.controles;
 
 
+import java.util.List;
+import java.util.NoSuchElementException;
+
 import javax.persistence.EntityNotFoundException;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,36 +16,46 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.autobots.automanager.entidades.Cliente;
 import com.autobots.automanager.entidades.Endereco;
+import com.autobots.automanager.modelos.AdicionadorLinkEndereco;
 import com.autobots.automanager.modelos.EnderecoAtualizador;
-import com.autobots.automanager.repositorios.ClienteRepositorio;
 import com.autobots.automanager.repositorios.EnderecoRepositorio;
 
 @RestController
 @RequestMapping("/endereco")
 public class EnderecoControle {
-	@Autowired 
-	private ClienteRepositorio repositorioCliente;
 	
 	@Autowired 
 	private EnderecoRepositorio repositorioEndereco;
 	
-	@GetMapping("/endereco/{clienteId}")
-	public ResponseEntity<Endereco> obterEnderecoCliente(@PathVariable Long clienteId) {
-		try {
-	    	Cliente cliente = repositorioCliente.getById(clienteId);
-	    	if (cliente == null) {
-	    		ResponseEntity<Endereco> resposta = new ResponseEntity<>(HttpStatus.NOT_FOUND);
-				return resposta;
-	    	} else {
-	    		ResponseEntity<Endereco> resposta = new ResponseEntity<Endereco>(cliente.getEndereco(),HttpStatus.FOUND);
-	    		return resposta;
-	    	}
-		} catch (EntityNotFoundException e) {
+	@Autowired
+	private AdicionadorLinkEndereco adicionadorLink;
+	
+	@GetMapping("/endereco/{enderecoId}")
+	public ResponseEntity<Endereco> obterEndereco(@PathVariable Long enderecoId) {
+	    try {
+	        Endereco endereco = repositorioEndereco.findById(enderecoId).orElseThrow(() -> new EntityNotFoundException("Endereco não encontrado"));  
+	        adicionadorLink.adicionarLink(endereco);
+	        
+	        return new ResponseEntity<>(endereco, HttpStatus.OK);
+	    } catch (EntityNotFoundException | NoSuchElementException e) {
 	        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+	    } catch (Exception e) {
+	        return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
 	    }
-	    
+	}
+	
+	@GetMapping("enderecos")
+	public ResponseEntity<List<Endereco>> obterEnderecos() {
+		List<Endereco> enderecos = repositorioEndereco.findAll();
+		if (enderecos.isEmpty()) {
+			ResponseEntity<List<Endereco>> resposta = new ResponseEntity<>(HttpStatus.NOT_FOUND);
+			return resposta;
+		} else {
+			adicionadorLink.adicionarLink(enderecos);
+			ResponseEntity<List<Endereco>> resposta = new ResponseEntity<>(enderecos, HttpStatus.FOUND);
+			return resposta;
+		}
 	}
 	
 	

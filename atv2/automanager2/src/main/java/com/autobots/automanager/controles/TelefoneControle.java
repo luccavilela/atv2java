@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.autobots.automanager.entidades.Cliente;
 import com.autobots.automanager.entidades.Telefone;
 import com.autobots.automanager.modelos.TelefoneAtualizador;
-import com.autobots.automanager.modelos.AdicionadorLinkCliente;
+import com.autobots.automanager.modelos.AdicionadorLinkTelefone;
 import com.autobots.automanager.repositorios.ClienteRepositorio;
 import com.autobots.automanager.repositorios.TelefoneRepositorio;
 
@@ -31,7 +31,7 @@ public class TelefoneControle {
 	@Autowired
 	private TelefoneRepositorio repositorioTelefone;
 	@Autowired
-	private AdicionadorLinkCliente adicionadorLink;
+	private AdicionadorLinkTelefone adicionadorLink;
 	
 	@PostMapping("/adicionar/{clienteId}")
     public ResponseEntity<?> adicionarDocumento(@PathVariable Long clienteId, @RequestBody Telefone telefone) {
@@ -50,22 +50,33 @@ public class TelefoneControle {
         	
     }
 	
-	@GetMapping("/telefones/{clienteId}")
-	public ResponseEntity<List<Telefone>> obterTelefonesCliente(@PathVariable Long clienteId) {
+	@GetMapping("/telefone/{telefoneId}")
+	public ResponseEntity<Telefone> obterTelefone(@PathVariable Long telefoneId) {
 		try {
-	    	Cliente cliente = repositorioCliente.getById(clienteId);
-	    	if (cliente == null) {
-	    		ResponseEntity<List<Telefone>> resposta = new ResponseEntity<>(HttpStatus.NOT_FOUND);
-	    		return resposta;
-	    	} else {
-	    		ResponseEntity<List<Telefone>> resposta = new ResponseEntity<List<Telefone>>(cliente.getTelefones(),HttpStatus.FOUND);
-	    		adicionadorLink.adicionarLink(cliente);
-	    		return resposta;
-	    	}
+	    	Telefone telefone = repositorioTelefone.findById(telefoneId).orElseThrow(() -> new EntityNotFoundException("Telefone não encontrado"));  
+	    	adicionadorLink.adicionarLink(telefone);
+	    	
+	    	return new ResponseEntity<>(telefone, HttpStatus.OK);
 		} catch (EntityNotFoundException e) {
 	        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+	    } catch (Exception e) {
+	        return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
 	    }
 	}
+	
+	@GetMapping("telefones")
+	public ResponseEntity<List<Telefone>> obterTelefones() {
+		List<Telefone> telefones = repositorioTelefone.findAll();
+		if (telefones.isEmpty()) {
+			ResponseEntity<List<Telefone>> resposta = new ResponseEntity<>(HttpStatus.NOT_FOUND);
+			return resposta;
+		} else {
+			adicionadorLink.adicionarLink(telefones);
+			ResponseEntity<List<Telefone>> resposta = new ResponseEntity<>(telefones, HttpStatus.FOUND);
+			return resposta;
+		}
+	}
+	
 	
 	@PutMapping("/atualizar/{telefoneId}")
 	public ResponseEntity<?> atualizarTelefone(@PathVariable Long telefoneId, @RequestBody Telefone novoTelefone) {
